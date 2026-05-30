@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
+from autosarindex.core.figures import get_figure_context, search_figure_index
 from autosarindex.core.textfile import TextSearchMatch, extract_section_text
 from autosarindex.core.textfile import search_text as search_text_content
 from autosarindex.index import AutosarIndex
@@ -184,6 +185,7 @@ class AutosarTools:
             "toc_quality": artifacts.json_data.get("toc_quality"),
             "autosar_metadata": artifacts.json_data.get("autosar_metadata"),
             "autosar_requirements": self._autosar_requirement_manifest(artifacts),
+            "visual_index": self._visual_index_manifest(artifacts),
             "toc": self._compact_toc_nodes(artifacts.json_data.get("toc")),
         }
 
@@ -248,6 +250,31 @@ class AutosarTools:
                 )
             entry["page_texts"] = page_texts
             entry["page_texts_truncated"] = len(pages) > max_text_pages
+        return entry
+
+    def search_figures(
+        self,
+        query: str,
+        *,
+        max_results: int = 20,
+    ) -> dict[str, object]:
+        """Search indexed figure captions and nearby keywords."""
+        figures = self._figures()
+        return search_figure_index(figures, query, max_results=max_results)
+
+    def get_figure_context(
+        self,
+        figure_id: str,
+        *,
+        include_text: bool = False,
+    ) -> dict[str, object]:
+        """Return indexed context for one figure caption."""
+        figures = self._figures()
+        entry = get_figure_context(figures, figure_id)
+        if include_text:
+            page = entry.get("page")
+            if isinstance(page, int):
+                entry["page_text"] = self.get_section_text(page, page)
         return entry
 
     def get_section_text(self, start_page: int, end_page: int) -> str:
@@ -330,6 +357,35 @@ class AutosarTools:
             "lookup": (
                 "Use list_requirements for IDs and get_requirement_context "
                 "for one requirement's occurrences/pages/snippets."
+            ),
+        }
+
+    def _figures(self) -> list[dict[str, object]]:
+        artifacts = self._require_artifacts()
+        visual_index = artifacts.json_data.get("visual_index", {})
+        if not isinstance(visual_index, dict):
+            return []
+        figures = visual_index.get("figures", [])
+        if not isinstance(figures, list):
+            return []
+        return [
+            cast("dict[str, object]", figure)
+            for figure in figures
+            if isinstance(figure, dict)
+        ]
+
+    def _visual_index_manifest(self, artifacts: AutosarArtifacts) -> dict[str, object]:
+        visual_index = artifacts.json_data.get("visual_index", {})
+        if not isinstance(visual_index, dict):
+            return {"figure_count": 0}
+        figures = visual_index.get("figures", [])
+        figure_count = len(figures) if isinstance(figures, list) else 0
+        return {
+            "figure_count": figure_count,
+            "lookup": (
+                "Use search_figures for caption/keyword search and "
+                "get_figure_context for one figure's page, section, and "
+                "inspect_page hint."
             ),
         }
 
@@ -584,6 +640,56 @@ def create_autosar_tools_server():
             return _err(str(exc))
 
     @tool(
+        "search_figures",
+        "Search indexed Figure/Fig. captions and nearby text keywords. Use "
+        "this to find diagrams, state machines, flows, and architecture "
+        "figures by caption text or related words before calling inspect_page.",
+        {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "max_results": {"type": "integer", "minimum": 1},
+            },
+            "required": ["query"],
+        },
+    )
+    async def search_figures(args: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return _ok(
+                _require().search_figures(
+                    args["query"],
+                    max_results=args.get("max_results", 20),
+                )
+            )
+        except Exception as exc:
+            return _err(str(exc))
+
+    @tool(
+        "get_figure_context",
+        "Return one indexed figure's caption, page, section, keywords, nearby "
+        "requirement IDs, snippet, and inspect_page hint. Set include_text "
+        "only when the caption/snippet are not enough.",
+        {
+            "type": "object",
+            "properties": {
+                "figure_id": {"type": "string"},
+                "include_text": {"type": "boolean"},
+            },
+            "required": ["figure_id"],
+        },
+    )
+    async def get_figure_context_tool(args: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return _ok(
+                _require().get_figure_context(
+                    args["figure_id"],
+                    include_text=args.get("include_text", False),
+                )
+            )
+        except Exception as exc:
+            return _err(str(exc))
+
+    @tool(
         "inspect_page",
         "Render a PDF page as a PNG image for visual inspection. Use when "
         "extracted text is garbled or insufficient -- tables with complex "
@@ -672,6 +778,8 @@ def create_autosar_tools_server():
             search_text,
             list_requirements,
             get_requirement_context,
+            search_figures,
+            get_figure_context_tool,
             inspect_page,
             extract_table_markdown,
         ],

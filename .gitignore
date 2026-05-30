@@ -46,6 +46,7 @@ autosar_validation_output*/
 autosar_benchmark_output/
 autosar_occurrence_validation_output/
 autosar_requirement_index_validation_output/
+autosar_visual_validation_output/
 *.png
 *.jpg
 *.jpeg

@@ -87,6 +87,8 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
         "inspect_page",
         "list_requirements",
         "get_requirement_context",
+        "search_figures",
+        "get_figure_context",
         "search_text",
         "extract_table_markdown",
     }
@@ -121,6 +123,15 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
             "ids": ["SWS_Test_00001"],
         },
         get_requirement_context=fake_requirement_context,
+        search_figures=lambda query, max_results=20: {
+            "query": query,
+            "max_results": max_results,
+            "results": [{"id": "Figure 1.1"}],
+        },
+        get_figure_context=lambda figure_id, include_text=False: {
+            "id": figure_id,
+            "include_text": include_text,
+        },
         inspect_page=lambda page, region=None, dpi=None, detail="medium": (
             calls.append((page, region, dpi, detail))
             or [{"type": "image", "data": "Zm9v", "mime_type": "image/png"}]
@@ -157,6 +168,16 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
         max_text_pages=1,
         ctx=ctx,
     )
+    figure_search_result = server.registered_tools["search_figures"]["func"](
+        query="startup",
+        max_results=5,
+        ctx=ctx,
+    )
+    figure_context_result = server.registered_tools["get_figure_context"]["func"](
+        figure_id="Figure 1.1",
+        include_text=True,
+        ctx=ctx,
+    )
 
     assert calls == [(2, {"top": 0.1}, 200, "medium")]
     assert section_text_result == {
@@ -169,6 +190,9 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
     assert list_result["ids"] == ["SWS_Test_00001"]
     assert requirement_result["id"] == "SWS_Test_00001"
     assert requirement_result["include_text"] is True
+    assert figure_search_result["results"][0]["id"] == "Figure 1.1"
+    assert figure_context_result["id"] == "Figure 1.1"
+    assert figure_context_result["include_text"] is True
     import asyncio
 
     table_md_result = asyncio.run(

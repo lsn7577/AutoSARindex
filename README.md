@@ -40,6 +40,9 @@ When a source looks like AUTOSAR material, the JSON artifact includes:
 - an `autosar_requirements.index` lookup keyed by requirement ID, with
   occurrence counts, pages, semantic kind counts, specific sections, and short
   snippets for definition/reference/traceability/change-history hits
+- `visual_index.figures` with Figure/Fig. captions, pages, owning sections,
+  nearby text keywords, nearby requirement IDs, and an `inspect_page` hint for
+  diagram review
 - ToC-node enrichments such as `autosar_section_type`, `requirement_ids`,
   `requirement_count`, `requirement_occurrence_summary`,
   `normative_keywords`, and `referenced_documents`
@@ -131,6 +134,8 @@ with AutosarTools("AUTOSAR_SWS_COM.pdf") as tools:
     artifacts = tools.build_document(output_dir="output")
     ids = tools.list_requirements(prefix="SWS_Com_", max_results=50)
     context = tools.get_requirement_context("SWS_Com_00001")
+    figures = tools.search_figures("startup flow")
+    figure = tools.get_figure_context("Figure 7.11")
     matches = tools.search_text("SWS_Com_00001")
     section_text = tools.get_section_text(12, 14)
     image = tools.inspect_page(
@@ -150,6 +155,9 @@ tools for the bound PDF source:
 - `list_requirements` - list requirement IDs without returning the full JSON
 - `get_requirement_context` - return pages, sections, kind counts, and snippets
   for one requirement ID
+- `search_figures` - search indexed Figure/Fig. captions and nearby keywords
+- `get_figure_context` - return a figure's caption, page, section, nearby
+  requirement IDs, keywords, snippet, and `inspect_page` hint
 - `get_section_text` - return extracted text for a page range from the latest build
 - `search_text` - find page-aware text snippets in the latest build, even when
   labels wrap across lines or table values interrupt the phrase
@@ -160,8 +168,11 @@ tools for the bound PDF source:
 `build_document` returns a compact manifest rather than the full JSON artifact,
 so initial tool calls stay small even for large SWS documents. Build once, then
 use `list_requirements` and `get_requirement_context` for requirement-centric
-questions. Use `get_section_text`, `search_text`, and `inspect_page` when you
-need wider context or visual confirmation.
+questions. Use `search_figures` and `get_figure_context` to locate flowcharts,
+state diagrams, architecture figures, and other captioned visuals before
+calling `inspect_page` on the returned page. Use `get_section_text`,
+`search_text`, and `inspect_page` when you need wider context or visual
+confirmation.
 `search_text` prefers exact matches, then falls back
 to whitespace-normalized and ordered-token matching for line-wrapped table
 rows.
@@ -251,6 +262,12 @@ estimate):
 
 This keeps common requirement lookups far smaller than reading the whole PDF
 text while preserving the raw page-matched text for audit and fallback.
+
+Figure indexing is intentionally text-first. It does not OCR or semantically
+parse diagrams during indexing; it records captions such as `Figure 7.11:`,
+nearby text keywords, nearby requirement IDs, and the page/section location so
+an agent can find the relevant diagram cheaply and then call `inspect_page`
+only when visual review is needed.
 
 ## Project structure
 

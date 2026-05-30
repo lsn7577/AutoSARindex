@@ -76,11 +76,10 @@ def test_autosar_tools_build_document_alias(tmp_path):
     doc = pymupdf.open()
     page = doc.new_page()
     writer = pymupdf.TextWriter(page.rect)
-    writer.append(
-        (72, 72),
-        "AUTOSAR\nSpecification of Test\nAUTOSAR_SWS_TEST\n"
-        "[SWS_Test_00001] The module shall start.",
-    )
+    writer.append((72, 72), "AUTOSAR Specification of Test AUTOSAR_SWS_TEST")
+    writer.append((72, 92), "[SWS_Test_00001] The module shall start.")
+    writer.append((72, 112), "Figure 1.1: Module startup flow")
+    writer.append((72, 132), "Init Run Stop")
     writer.write_text(page)
     doc.save(str(pdf_path))
     doc.close()
@@ -91,6 +90,8 @@ def test_autosar_tools_build_document_alias(tmp_path):
         manifest = tools.get_artifact_manifest()
         listed = tools.list_requirements()
         context = tools.get_requirement_context("SWS_Test_00001")
+        figure_matches = tools.search_figures("startup")
+        figure_context = tools.get_figure_context("Figure 1.1")
     finally:
         tools.close()
 
@@ -103,6 +104,10 @@ def test_autosar_tools_build_document_alias(tmp_path):
     assert manifest_requirements["ids_by_kind_counts"] == {"definition": 1}
     manifest_toc = manifest["toc"]
     assert isinstance(manifest_toc, list)
+    manifest_visual_index = manifest["visual_index"]
+    assert isinstance(manifest_visual_index, dict)
+    manifest_visual_index = cast("dict[str, object]", manifest_visual_index)
+    assert manifest_visual_index["figure_count"] == 1
     assert listed["ids"] == ["SWS_Test_00001"]
     assert context["definition_pages"] == [1]
     occurrences = context["occurrences"]
@@ -113,6 +118,12 @@ def test_autosar_tools_build_document_alias(tmp_path):
     snippet = first_occurrence["snippet"]
     assert isinstance(snippet, str)
     assert "[SWS_Test_00001]" in snippet
+    assert figure_matches["total_matches"] == 1
+    assert figure_context["page"] == 1
+    inspect_hint = figure_context["inspect_hint"]
+    assert isinstance(inspect_hint, dict)
+    inspect_hint = cast("dict[str, object]", inspect_hint)
+    assert inspect_hint["page"] == 1
 
 
 def test_build_document_omitted_output_dir_uses_resolver(monkeypatch, tmp_path):
@@ -247,6 +258,8 @@ def test_create_server_registers_tools(monkeypatch, tmp_path):
         "search_text",
         "list_requirements",
         "get_requirement_context",
+        "search_figures",
+        "get_figure_context",
         "inspect_page",
         "extract_table_markdown",
     }

@@ -90,10 +90,11 @@ def create_local_mcp_server(
             "the full enriched ToC plus AUTOSAR metadata and requirement "
             "summaries when detected. Then use list_requirements and "
             "get_requirement_context for requirement-focused questions, "
-            "get_section_text to read page ranges, search_text to locate "
-            "keywords, and inspect_page for visual content. You can switch "
-            "documents by calling build_document with a new source. When a "
-            "table in get_section_text looks garbled, use "
+            "search_figures and get_figure_context for figure/diagram "
+            "navigation, get_section_text to read page ranges, search_text to "
+            "locate keywords, and inspect_page for visual content. You can "
+            "switch documents by calling build_document with a new source. "
+            "When a table in get_section_text looks garbled, use "
             "extract_table_markdown for a clean Markdown table (cheaper than "
             "inspect_page)."
         ),
@@ -232,6 +233,24 @@ def create_local_mcp_server(
             max_text_pages=max_text_pages,
         )
 
+    def search_figures_tool(
+        query: str,
+        max_results: int = 20,
+        ctx: Context[ServerSession, _ServerContext] | None = None,
+    ) -> dict[str, object]:
+        """Search indexed figure captions and nearby keywords."""
+        tools = _require_tools(ctx)
+        return tools.search_figures(query, max_results=max_results)
+
+    def get_figure_context_tool(
+        figure_id: str,
+        include_text: bool = False,
+        ctx: Context[ServerSession, _ServerContext] | None = None,
+    ) -> dict[str, object]:
+        """Return indexed context for one figure caption."""
+        tools = _require_tools(ctx)
+        return tools.get_figure_context(figure_id, include_text=include_text)
+
     server.tool(
         name="build_document",
         description=(
@@ -242,9 +261,10 @@ def create_local_mcp_server(
             "source switches documents (cached if same source). Returns an "
             "artifact manifest with source info, total pages, ToC quality "
             "score, and a compact Table of Contents with section hierarchy, "
-            "page ranges, table counts, and requirement counts. Use "
-            "get_section_text/search_text/get_requirement_context for "
-            "detailed content instead of reading the full JSON.\n\n"
+            "page ranges, table counts, requirement counts, and visual-index "
+            "summary. Use get_section_text/search_text/get_requirement_context/"
+            "search_figures/get_figure_context for detailed content instead "
+            "of reading the full JSON.\n\n"
             "IMPORTANT - include_summaries: Leave as False (default) unless "
             "the user explicitly requests summaries. Generating summaries "
             "makes one LLM call per ToC section, which is slow and "
@@ -297,6 +317,23 @@ def create_local_mcp_server(
             "are insufficient."
         ),
     )(get_requirement_context_tool)
+    server.tool(
+        name="search_figures",
+        description=(
+            "Search indexed Figure/Fig. captions and nearby text keywords. "
+            "Use this to find diagrams, state machines, flows, and "
+            "architecture figures by caption text or related words before "
+            "calling inspect_page."
+        ),
+    )(search_figures_tool)
+    server.tool(
+        name="get_figure_context",
+        description=(
+            "Return one indexed figure's caption, page, section, keywords, "
+            "nearby requirement IDs, snippet, and inspect_page hint. Set "
+            "include_text only when the caption/snippet are not enough."
+        ),
+    )(get_figure_context_tool)
     server.tool(
         name="inspect_page",
         description=(

@@ -489,6 +489,8 @@ def test_build_adds_autosar_metadata_and_requirements(monkeypatch, tmp_path):
             "Document Status Final",
             "R24-11",
             "[SWS_Com_00001] The COM module shall transmit I-PDUs.",
+            "Figure 2.1: COM transmission flow",
+            "I-PDU transmit trigger confirmation",
             "--- PAGE 2 ---",
             "Refer to AUTOSAR_SWS_PDUR.",
         ]
@@ -569,6 +571,11 @@ def test_build_adds_autosar_metadata_and_requirements(monkeypatch, tmp_path):
     assert toc_node["requirement_occurrence_summary"] == {"definition": 1}
     assert toc_node["normative_keywords"] == ["shall"]
     assert toc_node["referenced_documents"] == ["AUTOSAR_SWS_COM", "AUTOSAR_SWS_PDUR"]
+    figure = artifacts.json_data["visual_index"]["figures"][0]
+    assert figure["id"] == "Figure 2.1"
+    assert figure["page"] == 1
+    assert figure["section"]["node_id"] == "0001"
+    assert "transmission" in [keyword.casefold() for keyword in figure["keywords"]]
 
 
 def test_resolve_default_output_dir_uses_uid_namespaced_tempdir(monkeypatch):

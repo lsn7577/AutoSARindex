@@ -25,6 +25,7 @@ from autosarindex.core.autosar_metadata import (
     extract_autosar_metadata,
     is_autosar_document,
 )
+from autosarindex.core.figures import build_figure_index
 from autosarindex.core.preamble import generate_preamble
 from autosarindex.core.quality import assess_toc_quality
 from autosarindex.core.requirements import (
@@ -382,6 +383,9 @@ class AutosarIndex:
                     "recommend_summaries": toc_quality.recommend_summaries,
                 },
                 "toc": [node.to_dict() for node in nodes],
+                "visual_index": {
+                    "figures": build_figure_index(text_content, nodes),
+                },
             }
             if is_autosar:
                 requirement_ids = collect_requirement_ids(nodes)
