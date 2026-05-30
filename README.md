@@ -49,10 +49,8 @@ visual inspection tools while adding AUTOSAR-specific navigation metadata.
 
 ## Links
 
-- [Infineon Developer Community](https://community.infineon.com/) - forums and
+- [Autosar standard]([https://community.infineon.com/](https://www.autosar.org/standards)) - forums and
   knowledge base
-- [Infineon Developer Center](https://softwaretools.infineon.com/) - tools and
-  software packages
 - [How to contribute](./CONTRIBUTING.md)
 - [Code of Conduct](./CODE_OF_CONDUCT.md)
 - [Support](./SUPPORT.md)
