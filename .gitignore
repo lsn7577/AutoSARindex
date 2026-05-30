@@ -42,6 +42,10 @@ CLAUDE.md
 # Output artifacts
 output/
 output_*/
+autosar_validation_output*/
+autosar_benchmark_output/
+autosar_occurrence_validation_output/
+autosar_requirement_index_validation_output/
 *.png
 *.jpg
 *.jpeg

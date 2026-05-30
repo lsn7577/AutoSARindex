@@ -1,7 +1,7 @@
 """Tests for ToC quality scoring."""
 
-from datasheetindex.core.quality import assess_toc_quality
-from datasheetindex.models import TocNode
+from autosarindex.core.quality import assess_toc_quality
+from autosarindex.models import TocNode
 
 
 def test_empty_toc_scores_zero():

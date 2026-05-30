@@ -5,13 +5,13 @@ from pathlib import Path
 import pymupdf
 import pytest
 
-from datasheetindex.core.annotations import (
+from autosarindex.core.annotations import (
     enrich_with_cross_references,
     enrich_with_footnote_markers,
 )
-from datasheetindex.core.structure import build_tree, extract_toc
-from datasheetindex.core.textfile import generate_text
-from datasheetindex.models import TocNode
+from autosarindex.core.structure import build_tree, extract_toc
+from autosarindex.core.textfile import generate_text
+from autosarindex.models import TocNode
 
 DATA2PAGE_DIR = Path(__file__).resolve().parent.parent.parent / "data2page"
 TLE9350_PATH = DATA2PAGE_DIR / "Infineon-TLE9350BSJ-DataSheet-v01_00-EN.pdf"
@@ -190,6 +190,20 @@ def test_crossref_multiple_types():
     enrich_with_cross_references([node, target], text)
     types = {r["type"] for r in node.cross_references}
     assert types == {"figure", "table", "section"}
+
+
+def test_crossref_autosar_requirement():
+    text = _make_text("See [SWS_Com_00001] for transmission constraints.")
+    node = _make_node()
+    enrich_with_cross_references([node], text)
+
+    assert node.cross_references == [
+        {
+            "text": "See [SWS_Com_00001]",
+            "type": "requirement",
+            "target": "SWS_Com_00001",
+        }
+    ]
 
 
 # ===================== Integration tests =====================

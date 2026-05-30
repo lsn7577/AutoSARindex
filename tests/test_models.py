@@ -1,7 +1,7 @@
 """Tests for data models."""
 
-from datasheetindex.models import (
-    DatasheetArtifacts,
+from autosarindex.models import (
+    AutosarArtifacts,
     TocNode,
     TocQuality,
     flatten_nodes,
@@ -17,6 +17,14 @@ def test_toc_node_defaults():
     assert node.continued_tables == []
     assert node.footnote_markers == []
     assert node.cross_references == []
+    assert node.autosar_section_type == ""
+    assert node.requirement_ids == []
+    assert node.requirement_count == 0
+    assert node.requirement_occurrences == []
+    assert node.requirement_occurrence_count == 0
+    assert node.requirement_occurrence_summary == {}
+    assert node.normative_keywords == []
+    assert node.referenced_documents == []
     assert node.nodes == []
 
 
@@ -115,6 +123,14 @@ def test_toc_node_to_dict_omits_empty_enrichments():
     assert "summary" not in d
     assert "breadcrumb" not in d
     assert "boilerplate_category" not in d
+    assert "autosar_section_type" not in d
+    assert "requirement_ids" not in d
+    assert "requirement_count" not in d
+    assert "requirement_occurrences" not in d
+    assert "requirement_occurrence_count" not in d
+    assert "requirement_occurrence_summary" not in d
+    assert "normative_keywords" not in d
+    assert "referenced_documents" not in d
 
 
 def test_toc_node_to_dict_includes_breadcrumb_and_boilerplate():
@@ -154,6 +170,40 @@ def test_toc_node_to_dict_includes_enrichments():
     assert d["cross_references"][0]["type"] == "table"
 
 
+def test_toc_node_to_dict_includes_autosar_enrichments():
+    node = TocNode(
+        title="Functional specification",
+        level=1,
+        start_page=1,
+        end_page=2,
+        node_id="0001",
+        autosar_section_type="requirements",
+        requirement_ids=["SWS_Com_00001"],
+        requirement_count=1,
+        requirement_occurrences=[
+            {
+                "id": "SWS_Com_00001",
+                "kind": "definition",
+                "page": 1,
+                "snippet": "[SWS_Com_00001] shall apply.",
+            }
+        ],
+        requirement_occurrence_count=1,
+        requirement_occurrence_summary={"definition": 1},
+        normative_keywords=["shall"],
+        referenced_documents=["AUTOSAR_SWS_PDUR"],
+    )
+    d = node.to_dict()
+    assert d["autosar_section_type"] == "requirements"
+    assert d["requirement_ids"] == ["SWS_Com_00001"]
+    assert d["requirement_count"] == 1
+    assert d["requirement_occurrence_count"] == 1
+    assert d["requirement_occurrence_summary"] == {"definition": 1}
+    assert d["requirement_occurrences"][0]["kind"] == "definition"
+    assert d["normative_keywords"] == ["shall"]
+    assert d["referenced_documents"] == ["AUTOSAR_SWS_PDUR"]
+
+
 def test_flatten_nodes_empty():
     assert flatten_nodes([]) == []
 
@@ -180,7 +230,7 @@ def test_flatten_nodes_nested():
 
 
 def test_datasheet_artifacts_defaults():
-    a = DatasheetArtifacts()
+    a = AutosarArtifacts()
     assert a.json_path is None
     assert a.text_path is None
     assert a.json_data == {}

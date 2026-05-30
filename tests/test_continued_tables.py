@@ -5,12 +5,12 @@ from pathlib import Path
 import pymupdf
 import pytest
 
-from datasheetindex.core.structure import (
+from autosarindex.core.structure import (
     build_tree,
     enrich_with_continued_tables,
     extract_toc,
 )
-from datasheetindex.core.textfile import generate_text
+from autosarindex.core.textfile import generate_text
 
 DATA2PAGE_DIR = Path(__file__).resolve().parent.parent.parent / "data2page"
 TLE9350_PATH = DATA2PAGE_DIR / "Infineon-TLE9350BSJ-DataSheet-v01_00-EN.pdf"
@@ -26,7 +26,7 @@ def _make_text(*page_texts: str) -> str:
 
 
 def _make_node(title="Section", start=1, end=2):
-    from datasheetindex.models import TocNode
+    from autosarindex.models import TocNode
 
     return TocNode(title=title, level=1, start_page=start, end_page=end)
 
@@ -99,7 +99,7 @@ def test_scoped_to_node_page_range():
 
 def test_nested_nodes():
     """Should process child nodes recursively."""
-    from datasheetindex.models import TocNode
+    from autosarindex.models import TocNode
 
     text = _make_text(
         "data", "Table 1 Specs (Continued)\ndata", "Table 2 Timing (Continued)\ndata"

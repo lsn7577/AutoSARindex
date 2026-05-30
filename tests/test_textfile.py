@@ -6,8 +6,8 @@ from pathlib import Path
 import pymupdf
 import pytest
 
-import datasheetindex.core.textfile as textfile_module
-from datasheetindex.core.textfile import extract_page_text, generate_text, search_text
+import autosarindex.core.textfile as textfile_module
+from autosarindex.core.textfile import extract_page_text, generate_text, search_text
 
 DATA2PAGE_DIR = Path(__file__).resolve().parent.parent.parent / "data2page"
 TLE9350_PATH = DATA2PAGE_DIR / "Infineon-TLE9350BSJ-DataSheet-v01_00-EN.pdf"

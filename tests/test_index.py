@@ -1,4 +1,4 @@
-"""Tests for the main DatasheetIndex orchestrator."""
+"""Tests for the main AutosarIndex orchestrator."""
 
 import json
 import re
@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from datasheetindex.index import DatasheetIndex
-from datasheetindex.models import TocNode, TocQuality
+from autosarindex.index import AutosarIndex
+from autosarindex.models import TocNode, TocQuality
 
 DATA2PAGE_DIR = Path(__file__).resolve().parent.parent.parent / "data2page"
 TLE9350_PATH = DATA2PAGE_DIR / "Infineon-TLE9350BSJ-DataSheet-v01_00-EN.pdf"
@@ -20,7 +20,7 @@ def test_build_produces_artifacts(tmp_path):
     if not TLE9350_PATH.exists():
         pytest.skip("Test PDF not found")
 
-    idx = DatasheetIndex(str(TLE9350_PATH))
+    idx = AutosarIndex(str(TLE9350_PATH))
     artifacts = idx.build(output_dir=str(tmp_path))
     idx.close()
 
@@ -37,7 +37,7 @@ def test_json_structure(tmp_path):
     if not TLE9350_PATH.exists():
         pytest.skip("Test PDF not found")
 
-    idx = DatasheetIndex(str(TLE9350_PATH))
+    idx = AutosarIndex(str(TLE9350_PATH))
     artifacts = idx.build(output_dir=str(tmp_path))
     idx.close()
 
@@ -57,7 +57,7 @@ def test_json_file_valid(tmp_path):
     if not TLE9350_PATH.exists():
         pytest.skip("Test PDF not found")
 
-    idx = DatasheetIndex(str(TLE9350_PATH))
+    idx = AutosarIndex(str(TLE9350_PATH))
     artifacts = idx.build(output_dir=str(tmp_path))
     idx.close()
 
@@ -73,7 +73,7 @@ def test_text_file_page_alignment(tmp_path):
     if not TLE9350_PATH.exists():
         pytest.skip("Test PDF not found")
 
-    idx = DatasheetIndex(str(TLE9350_PATH))
+    idx = AutosarIndex(str(TLE9350_PATH))
     artifacts = idx.build(output_dir=str(tmp_path))
     idx.close()
 
@@ -92,7 +92,7 @@ def test_toc_quality_populated(tmp_path):
     if not TLE9350_PATH.exists():
         pytest.skip("Test PDF not found")
 
-    idx = DatasheetIndex(str(TLE9350_PATH))
+    idx = AutosarIndex(str(TLE9350_PATH))
     artifacts = idx.build(output_dir=str(tmp_path))
     idx.close()
 
@@ -107,7 +107,7 @@ def test_lazy_doc_and_close():
     if not TLE9350_PATH.exists():
         pytest.skip("Test PDF not found")
 
-    idx = DatasheetIndex(str(TLE9350_PATH))
+    idx = AutosarIndex(str(TLE9350_PATH))
     assert idx._doc is None
     _ = idx.doc
     assert idx._doc is not None
@@ -129,10 +129,10 @@ def test_url_source_downloads_and_cleans_up(monkeypatch):
         opened_paths.append(path)
         return DummyDoc()
 
-    monkeypatch.setattr("datasheetindex.index.urllib.request.urlopen", fake_urlopen)
-    monkeypatch.setattr("datasheetindex.index.pymupdf.open", fake_open)
+    monkeypatch.setattr("autosarindex.index.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("autosarindex.index.pymupdf.open", fake_open)
 
-    idx = DatasheetIndex("https://example.com/test.pdf")
+    idx = AutosarIndex("https://example.com/test.pdf")
     _ = idx.doc
     assert len(opened_paths) == 1
     assert idx._temp_pdf_path is not None
@@ -148,9 +148,9 @@ def test_url_source_rejects_non_pdf_content_type(monkeypatch):
     def fake_urlopen(url: str, timeout: int):
         return FakeResponse(b"<!doctype html>", content_type="text/html")
 
-    monkeypatch.setattr("datasheetindex.index.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("autosarindex.index.urllib.request.urlopen", fake_urlopen)
 
-    idx = DatasheetIndex("https://example.com/test.pdf")
+    idx = AutosarIndex("https://example.com/test.pdf")
     with pytest.raises(ValueError, match="did not return a PDF content type"):
         _ = idx.doc
 
@@ -161,9 +161,9 @@ def test_url_source_rejects_non_pdf_body(monkeypatch):
     def fake_urlopen(url: str, timeout: int):
         return FakeResponse(b"<!doctype html>", content_type="application/pdf")
 
-    monkeypatch.setattr("datasheetindex.index.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("autosarindex.index.urllib.request.urlopen", fake_urlopen)
 
-    idx = DatasheetIndex("https://example.com/test.pdf")
+    idx = AutosarIndex("https://example.com/test.pdf")
     with pytest.raises(ValueError, match="not a valid PDF"):
         _ = idx.doc
 
@@ -180,7 +180,7 @@ def test_url_source_retries_on_ssl_error(monkeypatch):
         nonlocal call_count
         call_count += 1
         if context is None:
-            # First attempt — simulate SSL failure
+            # First attempt 鈥?simulate SSL failure
             raise urllib.error.URLError(
                 ssl.SSLCertVerificationError(
                     "certificate verify failed: self-signed certificate"
@@ -196,10 +196,10 @@ def test_url_source_retries_on_ssl_error(monkeypatch):
         opened_paths.append(path)
         return DummyDoc()
 
-    monkeypatch.setattr("datasheetindex.index.urllib.request.urlopen", fake_urlopen)
-    monkeypatch.setattr("datasheetindex.index.pymupdf.open", fake_open)
+    monkeypatch.setattr("autosarindex.index.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("autosarindex.index.pymupdf.open", fake_open)
 
-    idx = DatasheetIndex("https://vendor.example.com/datasheet.pdf")
+    idx = AutosarIndex("https://vendor.example.com/datasheet.pdf")
     _ = idx.doc
     assert call_count == 2
     assert len(opened_paths) == 1
@@ -261,37 +261,37 @@ def test_build_auto_llm_fallback_when_quality_low(monkeypatch, tmp_path):
             )
         ]
 
-    monkeypatch.setattr("datasheetindex.index.pymupdf.open", fake_open)
+    monkeypatch.setattr("autosarindex.index.pymupdf.open", fake_open)
     monkeypatch.setattr(
-        "datasheetindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
+        "autosarindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
     )
-    monkeypatch.setattr("datasheetindex.index.generate_preamble", lambda _doc: "pre")
-    monkeypatch.setattr("datasheetindex.index.extract_toc", lambda _doc: [])
-    monkeypatch.setattr("datasheetindex.index.build_tree", lambda _raw, _pages: [])
+    monkeypatch.setattr("autosarindex.index.generate_preamble", lambda _doc: "pre")
+    monkeypatch.setattr("autosarindex.index.extract_toc", lambda _doc: [])
+    monkeypatch.setattr("autosarindex.index.build_tree", lambda _raw, _pages: [])
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_table_counts",
+        "autosarindex.index.enrich_with_table_counts",
         lambda _nodes, _doc, **_kw: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_continued_tables",
+        "autosarindex.index.enrich_with_continued_tables",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_footnote_markers",
+        "autosarindex.index.enrich_with_footnote_markers",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_cross_references",
+        "autosarindex.index.enrich_with_cross_references",
         lambda _nodes, _text: _nodes,
     )
-    monkeypatch.setattr("datasheetindex.index.assess_toc_quality", fake_quality)
-    monkeypatch.setattr("datasheetindex.llm.client.create_llm_client", fake_client)
+    monkeypatch.setattr("autosarindex.index.assess_toc_quality", fake_quality)
+    monkeypatch.setattr("autosarindex.llm.client.create_llm_client", fake_client)
     monkeypatch.setattr(
-        "datasheetindex.llm.toc_fallback.generate_toc_from_text",
+        "autosarindex.llm.toc_fallback.generate_toc_from_text",
         fake_toc_from_text,
     )
 
-    idx = DatasheetIndex("dummy.pdf")
+    idx = AutosarIndex("dummy.pdf")
     artifacts = idx.build(output_dir=str(tmp_path))
     idx.close()
 
@@ -307,31 +307,31 @@ def test_build_auto_llm_fallback_graceful_without_credentials(monkeypatch, tmp_p
     def fake_open(_path: str):
         return _FakeBuildDoc()
 
-    monkeypatch.setattr("datasheetindex.index.pymupdf.open", fake_open)
+    monkeypatch.setattr("autosarindex.index.pymupdf.open", fake_open)
     monkeypatch.setattr(
-        "datasheetindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
+        "autosarindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
     )
-    monkeypatch.setattr("datasheetindex.index.generate_preamble", lambda _doc: "pre")
-    monkeypatch.setattr("datasheetindex.index.extract_toc", lambda _doc: [])
-    monkeypatch.setattr("datasheetindex.index.build_tree", lambda _raw, _pages: [])
+    monkeypatch.setattr("autosarindex.index.generate_preamble", lambda _doc: "pre")
+    monkeypatch.setattr("autosarindex.index.extract_toc", lambda _doc: [])
+    monkeypatch.setattr("autosarindex.index.build_tree", lambda _raw, _pages: [])
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_table_counts",
+        "autosarindex.index.enrich_with_table_counts",
         lambda _nodes, _doc, **_kw: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_continued_tables",
+        "autosarindex.index.enrich_with_continued_tables",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_footnote_markers",
+        "autosarindex.index.enrich_with_footnote_markers",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_cross_references",
+        "autosarindex.index.enrich_with_cross_references",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.assess_toc_quality",
+        "autosarindex.index.assess_toc_quality",
         lambda _nodes, _total_pages: TocQuality(
             score=0.0,
             entry_count=0,
@@ -344,11 +344,11 @@ def test_build_auto_llm_fallback_graceful_without_credentials(monkeypatch, tmp_p
         raise ValueError("missing env")
 
     monkeypatch.setattr(
-        "datasheetindex.llm.client.create_llm_client",
+        "autosarindex.llm.client.create_llm_client",
         _raise_missing_env,
     )
 
-    idx = DatasheetIndex("dummy.pdf")
+    idx = AutosarIndex("dummy.pdf")
     artifacts = idx.build(output_dir=str(tmp_path))
     idx.close()
 
@@ -381,42 +381,42 @@ def test_build_llm_fallback_graceful_on_api_error(monkeypatch, tmp_path):
     def fake_toc_from_text(_text, _total_pages, _llm_callable):
         raise RuntimeError("429 Too Many Requests")
 
-    monkeypatch.setattr("datasheetindex.index.pymupdf.open", fake_open)
+    monkeypatch.setattr("autosarindex.index.pymupdf.open", fake_open)
     monkeypatch.setattr(
-        "datasheetindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
+        "autosarindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
     )
-    monkeypatch.setattr("datasheetindex.index.generate_preamble", lambda _doc: "pre")
-    monkeypatch.setattr("datasheetindex.index.extract_toc", lambda _doc: [])
-    monkeypatch.setattr("datasheetindex.index.build_tree", lambda _raw, _pages: [])
+    monkeypatch.setattr("autosarindex.index.generate_preamble", lambda _doc: "pre")
+    monkeypatch.setattr("autosarindex.index.extract_toc", lambda _doc: [])
+    monkeypatch.setattr("autosarindex.index.build_tree", lambda _raw, _pages: [])
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_table_counts",
+        "autosarindex.index.enrich_with_table_counts",
         lambda _nodes, _doc, **_kw: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_continued_tables",
+        "autosarindex.index.enrich_with_continued_tables",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_footnote_markers",
+        "autosarindex.index.enrich_with_footnote_markers",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_cross_references",
+        "autosarindex.index.enrich_with_cross_references",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.assess_toc_quality",
+        "autosarindex.index.assess_toc_quality",
         lambda _nodes, _total_pages: TocQuality(
             score=0.0, entry_count=0, max_depth=0, page_coverage=0.0
         ),
     )
-    monkeypatch.setattr("datasheetindex.llm.client.create_llm_client", fake_client)
+    monkeypatch.setattr("autosarindex.llm.client.create_llm_client", fake_client)
     monkeypatch.setattr(
-        "datasheetindex.llm.toc_fallback.generate_toc_from_text",
+        "autosarindex.llm.toc_fallback.generate_toc_from_text",
         fake_toc_from_text,
     )
 
-    idx = DatasheetIndex("dummy.pdf")
+    idx = AutosarIndex("dummy.pdf")
     artifacts = idx.build(output_dir=str(tmp_path))
     idx.close()
 
@@ -431,31 +431,31 @@ def test_build_output_stem_override(monkeypatch, tmp_path):
     def fake_open(_path: str):
         return _FakeBuildDoc()
 
-    monkeypatch.setattr("datasheetindex.index.pymupdf.open", fake_open)
+    monkeypatch.setattr("autosarindex.index.pymupdf.open", fake_open)
     monkeypatch.setattr(
-        "datasheetindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
+        "autosarindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
     )
-    monkeypatch.setattr("datasheetindex.index.generate_preamble", lambda _doc: "pre")
-    monkeypatch.setattr("datasheetindex.index.extract_toc", lambda _doc: [])
-    monkeypatch.setattr("datasheetindex.index.build_tree", lambda _raw, _pages: [])
+    monkeypatch.setattr("autosarindex.index.generate_preamble", lambda _doc: "pre")
+    monkeypatch.setattr("autosarindex.index.extract_toc", lambda _doc: [])
+    monkeypatch.setattr("autosarindex.index.build_tree", lambda _raw, _pages: [])
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_table_counts",
+        "autosarindex.index.enrich_with_table_counts",
         lambda _nodes, _doc, **_kw: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_continued_tables",
+        "autosarindex.index.enrich_with_continued_tables",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_footnote_markers",
+        "autosarindex.index.enrich_with_footnote_markers",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_cross_references",
+        "autosarindex.index.enrich_with_cross_references",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.assess_toc_quality",
+        "autosarindex.index.assess_toc_quality",
         lambda _nodes, _total_pages: TocQuality(
             score=1.0,
             entry_count=0,
@@ -464,7 +464,7 @@ def test_build_output_stem_override(monkeypatch, tmp_path):
         ),
     )
 
-    idx = DatasheetIndex("dummy.pdf")
+    idx = AutosarIndex("dummy.pdf")
     artifacts = idx.build(output_dir=str(tmp_path), output_stem="custom:name")
     idx.close()
 
@@ -474,37 +474,146 @@ def test_build_output_stem_override(monkeypatch, tmp_path):
     assert artifacts.text_path.name == "custom_name.txt"
 
 
+def test_build_adds_autosar_metadata_and_requirements(monkeypatch, tmp_path):
+    def fake_open(_path: str):
+        return _FakeBuildDoc(pages=2)
+
+    text = "\n".join(
+        [
+            "--- PAGE 1 ---",
+            "AUTOSAR",
+            "Specification of Communication",
+            "AUTOSAR_SWS_COM",
+            "Classic Platform",
+            "Document Version 4.7.0",
+            "Document Status Final",
+            "R24-11",
+            "[SWS_Com_00001] The COM module shall transmit I-PDUs.",
+            "--- PAGE 2 ---",
+            "Refer to AUTOSAR_SWS_PDUR.",
+        ]
+    )
+    node = TocNode(
+        title="2 Functional specification",
+        level=1,
+        start_page=1,
+        end_page=2,
+        node_id="0001",
+    )
+
+    monkeypatch.setattr("autosarindex.index.pymupdf.open", fake_open)
+    monkeypatch.setattr("autosarindex.index.generate_text", lambda _doc: text)
+    monkeypatch.setattr(
+        "autosarindex.index.generate_preamble",
+        lambda _doc: "Specification of Communication\nAUTOSAR_SWS_COM",
+    )
+    monkeypatch.setattr("autosarindex.index.extract_toc", lambda _doc: [])
+    monkeypatch.setattr("autosarindex.index.build_tree", lambda _raw, _pages: [node])
+    monkeypatch.setattr(
+        "autosarindex.index.enrich_with_table_counts",
+        lambda _nodes, _doc, **_kw: _nodes,
+    )
+    monkeypatch.setattr(
+        "autosarindex.index.enrich_with_continued_tables",
+        lambda _nodes, _text: _nodes,
+    )
+    monkeypatch.setattr(
+        "autosarindex.index.enrich_with_footnote_markers",
+        lambda _nodes, _text: _nodes,
+    )
+    monkeypatch.setattr(
+        "autosarindex.index.enrich_with_cross_references",
+        lambda _nodes, _text: _nodes,
+    )
+    monkeypatch.setattr(
+        "autosarindex.index.assess_toc_quality",
+        lambda _nodes, _total_pages: TocQuality(
+            score=1.0,
+            entry_count=1,
+            max_depth=1,
+            page_coverage=1.0,
+        ),
+    )
+
+    idx = AutosarIndex("AUTOSAR_SWS_COM.pdf")
+    artifacts = idx.build(output_dir=str(tmp_path))
+    idx.close()
+
+    assert artifacts.json_data["document_type"] == "autosar"
+    assert artifacts.json_data["autosar_metadata"] == {
+        "document_title": "Specification of Communication",
+        "document_id": "AUTOSAR_SWS_COM",
+        "release": "R24-11",
+        "version": "4.7.0",
+        "status": "Final",
+        "platform": "Classic Platform",
+    }
+    autosar_requirements = artifacts.json_data["autosar_requirements"]
+    assert autosar_requirements["total_count"] == 1
+    assert autosar_requirements["ids"] == ["SWS_Com_00001"]
+    assert autosar_requirements["ids_by_kind"] == {"definition": ["SWS_Com_00001"]}
+    assert autosar_requirements["occurrence_count"] == 1
+    assert autosar_requirements["occurrence_summary"] == {"definition": 1}
+    assert autosar_requirements["occurrences_truncated"] is False
+    assert autosar_requirements["occurrences"][0]["kind"] == "definition"
+    requirement_index = autosar_requirements["index"]["SWS_Com_00001"]
+    assert requirement_index["occurrence_count"] == 1
+    assert requirement_index["definition_pages"] == [1]
+    assert requirement_index["occurrences"][0]["section_title"] == (
+        "2 Functional specification"
+    )
+    toc_node = artifacts.json_data["toc"][0]
+    assert toc_node["autosar_section_type"] == "requirements"
+    assert toc_node["requirement_ids"] == ["SWS_Com_00001"]
+    assert toc_node["requirement_occurrence_count"] == 1
+    assert toc_node["requirement_occurrence_summary"] == {"definition": 1}
+    assert toc_node["normative_keywords"] == ["shall"]
+    assert toc_node["referenced_documents"] == ["AUTOSAR_SWS_COM", "AUTOSAR_SWS_PDUR"]
+
+
 def test_resolve_default_output_dir_uses_uid_namespaced_tempdir(monkeypatch):
-    """Without env override, default lands in <tempdir>/datasheetindex-<uid>."""
+    """Without env override, default lands in <tempdir>/autosarindex-<uid>."""
     import os
     import tempfile
 
-    from datasheetindex.index import resolve_default_output_dir
+    from autosarindex.index import resolve_default_output_dir
 
+    monkeypatch.delenv("AUTOSARINDEX_OUTPUT_DIR", raising=False)
     monkeypatch.delenv("DATASHEETINDEX_OUTPUT_DIR", raising=False)
     resolved = Path(resolve_default_output_dir())
     assert resolved.parent == Path(tempfile.gettempdir())
     expected_leaf = (
-        f"datasheetindex-{os.getuid()}" if hasattr(os, "getuid") else "datasheetindex"
+        f"autosarindex-{os.getuid()}" if hasattr(os, "getuid") else "autosarindex"
     )
     assert resolved.name == expected_leaf
 
 
 def test_resolve_default_output_dir_honours_env_var(monkeypatch, tmp_path):
-    from datasheetindex.index import resolve_default_output_dir
+    from autosarindex.index import resolve_default_output_dir
 
-    monkeypatch.setenv("DATASHEETINDEX_OUTPUT_DIR", str(tmp_path / "deploy-pinned"))
+    monkeypatch.setenv("AUTOSARINDEX_OUTPUT_DIR", str(tmp_path / "deploy-pinned"))
     assert resolve_default_output_dir() == str(tmp_path / "deploy-pinned")
+
+
+def test_resolve_default_output_dir_honours_legacy_env_var(monkeypatch, tmp_path):
+    from autosarindex.index import resolve_default_output_dir
+
+    monkeypatch.delenv("AUTOSARINDEX_OUTPUT_DIR", raising=False)
+    monkeypatch.setenv(
+        "DATASHEETINDEX_OUTPUT_DIR", str(tmp_path / "legacy-deploy-pinned")
+    )
+    assert resolve_default_output_dir() == str(tmp_path / "legacy-deploy-pinned")
 
 
 def test_resolve_default_output_dir_blank_env_var_falls_through(monkeypatch):
     """Empty / whitespace env var must not be treated as a valid path."""
     import tempfile
 
-    from datasheetindex.index import resolve_default_output_dir
+    from autosarindex.index import resolve_default_output_dir
 
     for blank in ("", "   ", "\t\n"):
-        monkeypatch.setenv("DATASHEETINDEX_OUTPUT_DIR", blank)
+        monkeypatch.setenv("AUTOSARINDEX_OUTPUT_DIR", blank)
+        monkeypatch.delenv("DATASHEETINDEX_OUTPUT_DIR", raising=False)
         resolved = Path(resolve_default_output_dir())
         assert resolved.parent == Path(tempfile.gettempdir())
 
@@ -512,41 +621,41 @@ def test_resolve_default_output_dir_blank_env_var_falls_through(monkeypatch):
 def test_build_with_none_output_dir_writes_to_resolver_default(monkeypatch, tmp_path):
     """idx.build(output_dir=None) writes to the env-resolved default."""
     pinned = tmp_path / "env-pinned"
-    monkeypatch.setenv("DATASHEETINDEX_OUTPUT_DIR", str(pinned))
+    monkeypatch.setenv("AUTOSARINDEX_OUTPUT_DIR", str(pinned))
 
     monkeypatch.setattr(
-        "datasheetindex.index.pymupdf.open", lambda _path: _FakeBuildDoc()
+        "autosarindex.index.pymupdf.open", lambda _path: _FakeBuildDoc()
     )
     monkeypatch.setattr(
-        "datasheetindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
+        "autosarindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
     )
-    monkeypatch.setattr("datasheetindex.index.generate_preamble", lambda _doc: "pre")
-    monkeypatch.setattr("datasheetindex.index.extract_toc", lambda _doc: [])
-    monkeypatch.setattr("datasheetindex.index.build_tree", lambda _raw, _pages: [])
+    monkeypatch.setattr("autosarindex.index.generate_preamble", lambda _doc: "pre")
+    monkeypatch.setattr("autosarindex.index.extract_toc", lambda _doc: [])
+    monkeypatch.setattr("autosarindex.index.build_tree", lambda _raw, _pages: [])
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_table_counts",
+        "autosarindex.index.enrich_with_table_counts",
         lambda _nodes, _doc, **_kw: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_continued_tables",
+        "autosarindex.index.enrich_with_continued_tables",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_footnote_markers",
+        "autosarindex.index.enrich_with_footnote_markers",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_cross_references",
+        "autosarindex.index.enrich_with_cross_references",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.assess_toc_quality",
+        "autosarindex.index.assess_toc_quality",
         lambda _nodes, _total_pages: TocQuality(
             score=1.0, entry_count=0, max_depth=0, page_coverage=0.0
         ),
     )
 
-    idx = DatasheetIndex("dummy.pdf")
+    idx = AutosarIndex("dummy.pdf")
     artifacts = idx.build()
     idx.close()
 
@@ -558,42 +667,42 @@ def test_build_with_none_output_dir_writes_to_resolver_default(monkeypatch, tmp_
 def test_build_with_blank_output_dir_falls_through_to_resolver(monkeypatch, tmp_path):
     """Empty / whitespace output_dir must not be treated as explicit-CWD."""
     pinned = tmp_path / "env-pinned"
-    monkeypatch.setenv("DATASHEETINDEX_OUTPUT_DIR", str(pinned))
+    monkeypatch.setenv("AUTOSARINDEX_OUTPUT_DIR", str(pinned))
 
     monkeypatch.setattr(
-        "datasheetindex.index.pymupdf.open", lambda _path: _FakeBuildDoc()
+        "autosarindex.index.pymupdf.open", lambda _path: _FakeBuildDoc()
     )
     monkeypatch.setattr(
-        "datasheetindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
+        "autosarindex.index.generate_text", lambda _doc: "--- PAGE 1 ---\n"
     )
-    monkeypatch.setattr("datasheetindex.index.generate_preamble", lambda _doc: "pre")
-    monkeypatch.setattr("datasheetindex.index.extract_toc", lambda _doc: [])
-    monkeypatch.setattr("datasheetindex.index.build_tree", lambda _raw, _pages: [])
+    monkeypatch.setattr("autosarindex.index.generate_preamble", lambda _doc: "pre")
+    monkeypatch.setattr("autosarindex.index.extract_toc", lambda _doc: [])
+    monkeypatch.setattr("autosarindex.index.build_tree", lambda _raw, _pages: [])
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_table_counts",
+        "autosarindex.index.enrich_with_table_counts",
         lambda _nodes, _doc, **_kw: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_continued_tables",
+        "autosarindex.index.enrich_with_continued_tables",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_footnote_markers",
+        "autosarindex.index.enrich_with_footnote_markers",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.enrich_with_cross_references",
+        "autosarindex.index.enrich_with_cross_references",
         lambda _nodes, _text: _nodes,
     )
     monkeypatch.setattr(
-        "datasheetindex.index.assess_toc_quality",
+        "autosarindex.index.assess_toc_quality",
         lambda _nodes, _total_pages: TocQuality(
             score=1.0, entry_count=0, max_depth=0, page_coverage=0.0
         ),
     )
 
     for blank in ("", "   ", "\t"):
-        idx = DatasheetIndex("dummy.pdf")
+        idx = AutosarIndex("dummy.pdf")
         artifacts = idx.build(output_dir=blank)
         idx.close()
         assert artifacts.json_path is not None

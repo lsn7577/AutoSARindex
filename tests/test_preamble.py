@@ -5,7 +5,7 @@ from pathlib import Path
 import pymupdf
 import pytest
 
-from datasheetindex.core.preamble import generate_preamble
+from autosarindex.core.preamble import generate_preamble
 
 DATA2PAGE_DIR = Path(__file__).resolve().parent.parent.parent / "data2page"
 TLE9350_PATH = DATA2PAGE_DIR / "Infineon-TLE9350BSJ-DataSheet-v01_00-EN.pdf"

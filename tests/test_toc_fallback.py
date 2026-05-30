@@ -6,8 +6,8 @@ import json
 
 import pytest
 
-from datasheetindex.core.quality import assess_toc_quality
-from datasheetindex.llm.toc_fallback import (
+from autosarindex.core.quality import assess_toc_quality
+from autosarindex.llm.toc_fallback import (
     _parse_json_response,
     _split_into_chunks,
     generate_toc_from_text,
@@ -144,7 +144,7 @@ def test_generate_toc_invalid_level_raises():
 @pytest.mark.integration
 def test_generate_toc_integration():
     """Integration: generate ToC from sample datasheet text."""
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     sample_text = (
         "--- PAGE 1 ---\n"

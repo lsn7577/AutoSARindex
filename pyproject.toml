@@ -1,7 +1,7 @@
 [project]
-name = "datasheetindex"
+name = "autosarindex"
 version = "0.13.0"
-description = "Agent-first parameter extraction from technical datasheets"
+description = "Agent-first indexing for AUTOSAR standard documents"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
@@ -17,6 +17,8 @@ layout = ["pymupdf4llm>=1.27.0"]
 mcp = ["mcp[cli]>=1.26.0"]
 
 [project.scripts]
+autosarindex = "autosarindex.cli:main_cli"
+autosarindex-mcp-server = "autosarindex.mcp_server:main_cli"
 datasheetindex = "datasheetindex.cli:main_cli"
 datasheetindex-mcp-server = "datasheetindex.mcp_server:main_cli"
 
@@ -25,7 +27,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/datasheetindex"]
+packages = ["src/autosarindex", "src/datasheetindex"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -51,7 +53,7 @@ select = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["datasheetindex"]
+known-first-party = ["autosarindex", "datasheetindex"]
 
 [tool.ty.environment]
 python-version = "3.13"

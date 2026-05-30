@@ -70,7 +70,7 @@ def _install_fake_mcp(monkeypatch):
 def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
     _FakeCallToolResult, _FakeImageContent = _install_fake_mcp(monkeypatch)
 
-    from datasheetindex.mcp_server import create_local_mcp_server
+    from autosarindex.mcp_server import create_local_mcp_server
 
     server = create_local_mcp_server(
         host="0.0.0.0",
@@ -82,15 +82,28 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
     assert server.kwargs["port"] == 9001
     assert server.kwargs["streamable_http_path"] == "/custom-mcp"
     assert set(server.registered_tools) == {
-        "build_datasheet",
+        "build_document",
         "get_section_text",
         "inspect_page",
+        "list_requirements",
+        "get_requirement_context",
         "search_text",
         "extract_table_markdown",
     }
 
     calls: list[tuple[int, dict[str, float] | None, int | None, str]] = []
     search_calls: list[tuple[str, int | None, bool, int]] = []
+
+    def fake_requirement_context(
+        requirement_id: str,
+        include_text: bool = False,
+        max_text_pages: int = 2,
+    ) -> dict[str, object]:
+        return {
+            "id": requirement_id,
+            "include_text": include_text,
+            "max_text_pages": max_text_pages,
+        }
 
     fake_tools = types.SimpleNamespace(
         pdf_path="sample.pdf",
@@ -101,13 +114,20 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
             search_calls.append((query, page, case_sensitive, max_results))
             or [{"page": 2, "start": 0, "end": 3, "snippet": "foo"}]
         ),
+        list_requirements=lambda kind=None, prefix=None, max_results=200: {
+            "kind": kind,
+            "prefix": prefix,
+            "max_results": max_results,
+            "ids": ["SWS_Test_00001"],
+        },
+        get_requirement_context=fake_requirement_context,
         inspect_page=lambda page, region=None, dpi=None, detail="medium": (
             calls.append((page, region, dpi, detail))
             or [{"type": "image", "data": "Zm9v", "mime_type": "image/png"}]
         ),
         extract_table_markdown=lambda page: f"| col1 | col2 |\n| p{page} | val |",
     )
-    # Pre-load tools in server context (simulates a prior build_datasheet call)
+    # Pre-load tools in server context (simulates a prior build_document call)
     server_ctx = types.SimpleNamespace(tools=fake_tools)
     ctx = types.SimpleNamespace(
         request_context=types.SimpleNamespace(lifespan_context=server_ctx)
@@ -125,6 +145,18 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
         max_results=1,
         ctx=ctx,
     )
+    list_result = server.registered_tools["list_requirements"]["func"](
+        kind="definition",
+        prefix="SWS_Test_",
+        max_results=10,
+        ctx=ctx,
+    )
+    requirement_result = server.registered_tools["get_requirement_context"]["func"](
+        requirement_id="SWS_Test_00001",
+        include_text=True,
+        max_text_pages=1,
+        ctx=ctx,
+    )
 
     assert calls == [(2, {"top": 0.1}, 200, "medium")]
     assert section_text_result == {
@@ -134,6 +166,9 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
     }
     assert search_calls == [("foo", 2, True, 1)]
     assert search_result["results"][0]["snippet"] == "foo"
+    assert list_result["ids"] == ["SWS_Test_00001"]
+    assert requirement_result["id"] == "SWS_Test_00001"
+    assert requirement_result["include_text"] is True
     import asyncio
 
     table_md_result = asyncio.run(
@@ -153,7 +188,7 @@ def test_create_local_mcp_server_registers_inspect_page(monkeypatch):
 
 
 def test_create_local_mcp_server_raises_without_mcp(monkeypatch):
-    from datasheetindex import mcp_server
+    from autosarindex import mcp_server
 
     original_import_module = importlib.import_module
 
@@ -169,7 +204,7 @@ def test_create_local_mcp_server_raises_without_mcp(monkeypatch):
 
 
 def test_run_mcp_server_invokes_fastmcp_run(monkeypatch):
-    from datasheetindex import mcp_server
+    from autosarindex import mcp_server
 
     class _FakeServer:
         def __init__(self) -> None:
@@ -192,7 +227,7 @@ def test_run_mcp_server_invokes_fastmcp_run(monkeypatch):
 
 
 def test_main_runs_server(monkeypatch):
-    from datasheetindex import mcp_server
+    from autosarindex import mcp_server
 
     calls: list[tuple[str, str, int, str]] = []
 
@@ -219,7 +254,7 @@ def test_main_runs_server(monkeypatch):
 
 
 def test_main_reports_error(monkeypatch, capsys):
-    from datasheetindex import mcp_server
+    from autosarindex import mcp_server
 
     def _raise(*args, **kwargs):
         _ = args, kwargs

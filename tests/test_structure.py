@@ -5,13 +5,13 @@ from pathlib import Path
 import pymupdf
 import pytest
 
-from datasheetindex.core.structure import (
+from autosarindex.core.structure import (
     assign_breadcrumbs,
     build_tree,
     enrich_with_table_counts,
     extract_toc,
 )
-from datasheetindex.models import TocNode
+from autosarindex.models import TocNode
 
 DATA2PAGE_DIR = Path(__file__).resolve().parent.parent.parent / "data2page"
 TLE9350_PATH = DATA2PAGE_DIR / "Infineon-TLE9350BSJ-DataSheet-v01_00-EN.pdf"

@@ -2,11 +2,11 @@
 
 import pytest
 
-from datasheetindex.core.boilerplate import (
+from autosarindex.core.boilerplate import (
     classify_title,
     flag_boilerplate,
 )
-from datasheetindex.models import TocNode
+from autosarindex.models import TocNode
 
 
 @pytest.mark.parametrize(
@@ -56,6 +56,12 @@ from datasheetindex.models import TocNode
         ("Acronyms and Abbreviations", "glossary"),
         ("Terminology", "glossary"),
         ("Definitions", "glossary"),
+        # AUTOSAR standard-document administrative sections
+        ("References", "references"),
+        ("Reference Documents", "references"),
+        ("Related Documentation", "references"),
+        ("Document Conventions", "conventions"),
+        ("Requirements Traceability", "traceability"),
     ],
 )
 def test_classify_title_positive(title, expected):

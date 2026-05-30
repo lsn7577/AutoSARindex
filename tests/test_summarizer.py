@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from datasheetindex.core.textfile import extract_section_text
-from datasheetindex.llm.summarizer import add_summaries
-from datasheetindex.models import TocNode
+from autosarindex.core.textfile import extract_section_text
+from autosarindex.llm.summarizer import add_summaries
+from autosarindex.models import TocNode
 
 SAMPLE_TEXT = (
     "--- PAGE 1 ---\n"
@@ -109,7 +109,7 @@ def test_add_summaries_skips_short():
 @pytest.mark.integration
 def test_add_summaries_integration():
     """Integration: verify real LLM produces non-empty summaries."""
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     llm = create_llm_client()
     nodes = _make_nodes()

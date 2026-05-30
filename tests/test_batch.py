@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from datasheetindex.batch import BatchResult, build_batch
-from datasheetindex.models import DatasheetArtifacts
+from autosarindex.batch import BatchResult, build_batch
+from autosarindex.models import AutosarArtifacts
 
 DATA2PAGE_DIR = Path(__file__).resolve().parent.parent.parent / "data2page"
 TLE9350_PATH = DATA2PAGE_DIR / "Infineon-TLE9350BSJ-DataSheet-v01_00-EN.pdf"
@@ -96,7 +96,7 @@ def test_duplicate_stems_get_unique_output_names(monkeypatch, tmp_path):
             include_summaries: bool = False,
             llm_callable=None,
             output_stem: str | None = None,
-        ) -> DatasheetArtifacts:
+        ) -> AutosarArtifacts:
             _ = include_summaries, llm_callable
             stem = output_stem or self._output_stem()
             out = Path(output_dir)
@@ -105,12 +105,12 @@ def test_duplicate_stems_get_unique_output_names(monkeypatch, tmp_path):
             text_path = out / f"{stem}.txt"
             json_path.write_text(self.pdf_path, encoding="utf-8")
             text_path.write_text(self.pdf_path, encoding="utf-8")
-            return DatasheetArtifacts(json_path=json_path, text_path=text_path)
+            return AutosarArtifacts(json_path=json_path, text_path=text_path)
 
         def close(self) -> None:
             pass
 
-    monkeypatch.setattr("datasheetindex.batch.DatasheetIndex", _FakeIndex)
+    monkeypatch.setattr("autosarindex.batch.AutosarIndex", _FakeIndex)
 
     result = build_batch(
         [

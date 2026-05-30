@@ -7,7 +7,7 @@ from typing import Any, cast
 import pymupdf
 import pytest
 
-from datasheetindex.tools.vision import inspect_page
+from autosarindex.tools.vision import inspect_page
 
 DATA2PAGE_DIR = Path(__file__).resolve().parent.parent.parent / "data2page"
 TLE9350_PATH = DATA2PAGE_DIR / "Infineon-TLE9350BSJ-DataSheet-v01_00-EN.pdf"
@@ -115,7 +115,7 @@ def test_detail_high_matches_legacy_dpi_150():
     via_dpi = inspect_page(doc, page=1, dpi=150)
     doc.close()
 
-    # Same render parameters → identical bytes (PyMuPDF is deterministic
+    # Same render parameters 鈫?identical bytes (PyMuPDF is deterministic
     # given the same dpi and clip).
     assert via_detail[0]["data"] == via_dpi[0]["data"]
 

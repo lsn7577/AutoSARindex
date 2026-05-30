@@ -2,36 +2,53 @@
 <img src="./assets/images/Logo.svg" align="right" alt="Infineon logo">
 </a>
 
-# datasheetindex
+# autosarindex
 
-Agent-first parameter extraction from technical datasheets.
+Agent-first indexing for AUTOSAR standard documents.
 
 ## What it does
 
-`datasheetindex` is meant to be handed to an external agent in two parts:
+`autosarindex` is meant to be handed to an external agent in three parts:
 
-1. **Enriched ToC JSON** - Hierarchical section tree with page ranges, table hints, pre-computed breadcrumbs, boilerplate flags (revision history, disclaimers, etc.), and a preamble (pages 1-2 raw text) for agent orientation
+1. **Enriched ToC JSON** - Hierarchical section tree with page ranges, pre-computed breadcrumbs, boilerplate flags, AUTOSAR requirement IDs, normative keyword hints, referenced AUTOSAR documents, and a preamble (pages 1-2 raw text) for agent orientation
 2. **Page-matched text file** - Full document text with `--- PAGE N ---` markers aligned to the JSON, with column-aware reading order for two-column layouts
+3. **Tool surface** - Section reading, text search, page rendering, and optional table markdown extraction for edge cases
 
 All page numbers are **1-indexed** across the JSON, the text file markers, and
 `inspect_page(page=...)`.
 
-The library also exposes `create_datasheet_tools_server(pdf_path)`, which packages
-artifact-building, ToC/text access, text search, and `inspect_page` as the
-MCP/tool-server surface the agent can mount.
+The library exposes `create_autosar_tools_server()`, which packages
+artifact-building, ToC/text access, text search, and `inspect_page` as an
+MCP/tool-server surface the agent can mount. The older `datasheetindex` package
+and `create_datasheet_tools_server()` names remain as compatibility aliases.
 
 ## Philosophy
 
-The library doesn't extract parameters. The agent does. All intelligence lives in the agent; the library provides the best possible starting context and the right tools for edge cases.
+The library doesn't interpret AUTOSAR requirements by itself. The agent does.
+All intelligence lives in the agent; the library provides the best possible
+starting context and the right tools for edge cases.
 
-## Supported products
+## Supported documents
 
-`datasheetindex` is product-agnostic: it works with any PDF datasheet, including
-the full [Infineon product portfolio](https://www.infineon.com/cms/en/product/)
-(for example
-[microcontrollers](https://www.infineon.com/cms/en/product/microcontroller/),
-power, sensors, and connectivity devices). It has no dependency on a specific
-product line or family.
+`autosarindex` is designed for AUTOSAR standard PDFs such as SWS, RS, SRS, PRS,
+and TPS documents. It still works as a generic PDF indexer and keeps the legacy
+datasheet-compatible API while the project transitions.
+
+When a source looks like AUTOSAR material, the JSON artifact includes:
+
+- `document_type: "autosar"`
+- `autosar_metadata` with detected title, document ID, release, version, status,
+  and platform
+- `autosar_requirements` with a document-level list of requirement IDs
+- an `autosar_requirements.index` lookup keyed by requirement ID, with
+  occurrence counts, pages, semantic kind counts, specific sections, and short
+  snippets for definition/reference/traceability/change-history hits
+- ToC-node enrichments such as `autosar_section_type`, `requirement_ids`,
+  `requirement_count`, `requirement_occurrence_summary`,
+  `normative_keywords`, and `referenced_documents`
+
+This preserves the existing page-matched text, search, section reading, and
+visual inspection tools while adding AUTOSAR-specific navigation metadata.
 
 ## Links
 
@@ -58,10 +75,10 @@ Optional integrations:
 # low-quality ToC fallback when credentials are available)
 uv sync --extra llm
 
-# Local MCP server testing (`datasheetindex-mcp-server`)
+# Local MCP server testing (`autosarindex-mcp-server`)
 uv sync --extra mcp
 
-# MCP server handoff to a consuming agent (`create_datasheet_tools_server`)
+# MCP server handoff to a consuming agent (`create_autosar_tools_server`)
 uv pip install claude-agent-sdk
 ```
 
@@ -87,39 +104,40 @@ The pre-commit pytest hook runs the fast subset only:
 
 ## Input sources
 
-`DatasheetIndex` and `DatasheetTools` accept either:
+`AutosarIndex` and `AutosarTools` accept either:
 - a local PDF file path, or
-- an `http(s)` URL pointing to a PDF datasheet.
+- an `http(s)` URL pointing to a PDF document.
 
 ## Hand the MCP server to an agent
 
 ```python
-from datasheetindex import DatasheetIndex, create_datasheet_tools_server
+from autosarindex import AutosarIndex, create_autosar_tools_server
 
-artifacts = DatasheetIndex("datasheet.pdf").build(output_dir="output")
-datasheet_tools_server = create_datasheet_tools_server("datasheet.pdf")
+artifacts = AutosarIndex("AUTOSAR_SWS_COM.pdf").build(output_dir="output")
+autosar_tools_server = create_autosar_tools_server()
 
-# Pass datasheet_tools_server into your agent runtime's MCP server configuration.
+# Pass autosar_tools_server into your agent runtime's MCP server configuration.
 # The exact wiring depends on the host agent framework; this server object is the
-# concrete handoff point from datasheetindex to the agent.
+# concrete handoff point from autosarindex to the agent.
 agent = SomeAgentRuntime(
-    mcp_servers={"datasheet-tools": datasheet_tools_server},
+    mcp_servers={"autosar-tools": autosar_tools_server},
     system_prompt=build_prompt_from(artifacts),
 )
 ```
 
-If you want direct Python access instead of an MCP server, use `DatasheetTools`
+If you want direct Python access instead of an MCP server, use `AutosarTools`
 to build artifacts, search text, and call `inspect_page()` on the bound
 instance.
 
 ```python
-from datasheetindex import DatasheetTools
+from autosarindex import AutosarTools
 
-with DatasheetTools("datasheet.pdf") as tools:
-    tools.build_datasheet(output_dir="output")
-    toc = tools.get_toc()
-    matches = tools.search_text("supply voltage")
-    page_text = tools.get_page_text(12)
+with AutosarTools("AUTOSAR_SWS_COM.pdf") as tools:
+    artifacts = tools.build_document(output_dir="output")
+    ids = tools.list_requirements(prefix="SWS_Com_", max_results=50)
+    context = tools.get_requirement_context("SWS_Com_00001")
+    matches = tools.search_text("SWS_Com_00001")
+    section_text = tools.get_section_text(12, 14)
     image = tools.inspect_page(
         page=12,
         region={"top": 0.15, "bottom": 0.55, "left": 0.05, "right": 0.95},
@@ -133,30 +151,38 @@ The optional `region` crop uses percentages from `0.0` to `1.0`.
 You can run the local MCP server directly from the repository. It exposes these
 tools for the bound PDF source:
 
-- `build_datasheet` - build and save the `.json` / `.txt` artifacts
-- `get_toc` - return the enriched ToC JSON, including preamble and quality info
-- `get_page_text` - return extracted text for one page from the latest build
+- `build_document` - build and save the `.json` / `.txt` artifacts
+- `list_requirements` - list requirement IDs without returning the full JSON
+- `get_requirement_context` - return pages, sections, kind counts, and snippets
+  for one requirement ID
+- `get_section_text` - return extracted text for a page range from the latest build
 - `search_text` - find page-aware text snippets in the latest build, even when
   labels wrap across lines or table values interrupt the phrase
 - `inspect_page` - render a page image when visual confirmation is needed
+- `extract_table_markdown` - re-extract a page as layout-aware Markdown when
+  optional layout dependencies are installed
 
-Build once, then use `get_toc`, `get_page_text`, `search_text`, and
-`inspect_page` together. `search_text` prefers exact matches, then falls back
+`build_document` returns a compact manifest rather than the full JSON artifact,
+so initial tool calls stay small even for large SWS documents. Build once, then
+use `list_requirements` and `get_requirement_context` for requirement-centric
+questions. Use `get_section_text`, `search_text`, and `inspect_page` when you
+need wider context or visual confirmation.
+`search_text` prefers exact matches, then falls back
 to whitespace-normalized and ordered-token matching for line-wrapped table
 rows.
 
 ```bash
 # stdio transport (for Claude Code or another MCP client)
-uv run --extra mcp datasheetindex-mcp-server datasheet.pdf
+uv run --extra mcp autosarindex-mcp-server
 
-# then call build_datasheet(output_dir="output") from the MCP client
+# then call build_document(output_dir="output") from the MCP client
 ```
 
 You can also expose it over HTTP:
 
 ```bash
 # streamable HTTP transport (useful with MCP Inspector)
-uv run --extra mcp datasheetindex-mcp-server datasheet.pdf \
+uv run --extra mcp autosarindex-mcp-server \
   --transport streamable-http --port 8000
 ```
 
@@ -165,18 +191,17 @@ With `streamable-http`, the default MCP endpoint is
 
 This local server is for direct MCP testing. If you need an in-process SDK
 server object inside another Python runtime, use
-`create_datasheet_tools_server(pdf_path)` instead; it exposes the same tool
-surface for the bound PDF.
+`create_autosar_tools_server()` instead; it exposes the same tool surface.
 
 ## Python API
 
 ```python
-from datasheetindex import DatasheetIndex, build_batch
+from autosarindex import AutosarIndex, build_batch
 
-artifacts = DatasheetIndex("datasheet.pdf").build(output_dir="output")
+artifacts = AutosarIndex("AUTOSAR_SWS_COM.pdf").build(output_dir="output")
 
 batch_result = build_batch(
-    ["part-a.pdf", "part-b.pdf"],
+    ["AUTOSAR_SWS_COM.pdf", "AUTOSAR_SWS_PDUR.pdf"],
     output_dir="batch-output",
 )
 ```
@@ -188,24 +213,55 @@ multiple inputs would otherwise resolve to the same stem.
 
 ```bash
 # Local file
-datasheetindex build path/to/datasheet.pdf --output-dir output
+autosarindex build path/to/AUTOSAR_SWS_COM.pdf --output-dir output
 
 # Remote URL
-datasheetindex build https://example.com/datasheet.pdf --output-dir output
+autosarindex build https://example.com/AUTOSAR_SWS_COM.pdf --output-dir output
 
 # With explicit LLM model for ToC fallback and summaries
-datasheetindex build datasheet.pdf --model gpt-4.1 --include-summaries
+autosarindex build AUTOSAR_SWS_COM.pdf --model gpt-4.1 --include-summaries
 ```
 
-By default, `datasheetindex` first uses native PDF ToC extraction. If ToC
+By default, `autosarindex` first uses native PDF ToC extraction. If ToC
 quality is low, it automatically attempts LLM fallback with the default model
 (`gpt-4.1`) when LLM credentials are available. Pass `--model` to choose the
 LLM model explicitly; `--include-summaries` requires `--model`.
 
+## Validation and token efficiency
+
+The AUTOSAR requirement index was validated against representative documents in
+the workspace:
+
+| Document | Pages | Requirement IDs | Requirement occurrences |
+| --- | ---: | ---: | ---: |
+| `AUTOSAR_RS_ECUConfiguration.pdf` | 33 | 53 | 112 |
+| `AUTOSAR_SRS_OS.pdf` | 39 | 60 | 120 |
+| `AUTOSAR_SWS_OS.pdf` | 335 | 776 | 1188 |
+
+For requirement-centric queries, the intended path is:
+
+1. `build_document`
+2. `list_requirements` when discovery is needed
+3. `get_requirement_context(requirement_id)`
+4. `get_section_text` only when the returned snippets are not enough
+
+Approximate context sizes from the same validation run (`characters / 4` token
+estimate):
+
+| Document | Full extracted text | `list_requirements(max_results=20)` | One `get_requirement_context` | Context plus one page |
+| --- | ---: | ---: | ---: | ---: |
+| `AUTOSAR_RS_ECUConfiguration.pdf` | 13,558 | 104 | 770 | 1,276 |
+| `AUTOSAR_SRS_OS.pdf` | 16,856 | 100 | 274 | 808 |
+| `AUTOSAR_SWS_OS.pdf` | 153,594 | 101 | 308 | 822 |
+
+This keeps common requirement lookups far smaller than reading the whole PDF
+text while preserving the raw page-matched text for audit and fallback.
+
 ## Project structure
 
 ```
-src/datasheetindex/
+src/autosarindex/       # implementation package and public AUTOSAR API
+src/datasheetindex/     # compatibility wrappers for legacy imports
     core/
         structure.py       # ToC extraction + enriched tree JSON
         textfile.py        # PDF -> page-matched text file (column-aware)
@@ -213,6 +269,8 @@ src/datasheetindex/
         quality.py         # ToC quality assessment
         annotations.py     # Footnote and cross-reference enrichment
         boilerplate.py     # Title-pattern boilerplate classification
+        autosar_metadata.py # AUTOSAR cover-page metadata detection
+        requirements.py    # AUTOSAR requirement enrichment
     tools/
         vision.py          # inspect_page (page -> image)
         registry.py        # MCP/tool-server factory for agent runtimes
@@ -222,7 +280,7 @@ src/datasheetindex/
         toc_fallback.py    # LLM-based ToC generation fallback
         summarizer.py      # Optional section summaries
     cli.py                 # CLI entry point
-    index.py               # Main DatasheetIndex class
+    index.py               # Main indexing class
     models.py              # Data models
 ```
 

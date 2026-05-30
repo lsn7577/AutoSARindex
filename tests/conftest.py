@@ -1,4 +1,4 @@
-"""Shared test fixtures and helpers for datasheetindex tests."""
+"""Shared test fixtures and helpers for autosarindex tests."""
 
 import importlib
 import os

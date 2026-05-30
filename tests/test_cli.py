@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from datasheetindex.models import DatasheetArtifacts
+from autosarindex.models import AutosarArtifacts
 
 
 class _FakeIndex:
@@ -17,9 +17,9 @@ class _FakeIndex:
         output_dir: str = "output",
         include_summaries: bool = False,
         llm_callable=None,
-    ) -> DatasheetArtifacts:
+    ) -> AutosarArtifacts:
         _ = include_summaries, llm_callable
-        return DatasheetArtifacts(
+        return AutosarArtifacts(
             json_path=Path(output_dir) / "fake.json",
             text_path=Path(output_dir) / "fake.txt",
         )
@@ -29,9 +29,9 @@ class _FakeIndex:
 
 
 def test_cli_build_success(monkeypatch, capsys):
-    from datasheetindex import cli
+    from autosarindex import cli
 
-    monkeypatch.setattr("datasheetindex.cli.DatasheetIndex", _FakeIndex)
+    monkeypatch.setattr("autosarindex.cli.AutosarIndex", _FakeIndex)
     exit_code = cli.main(
         ["build", "https://example.com/test.pdf", "--output-dir", "out"]
     )
@@ -42,8 +42,20 @@ def test_cli_build_success(monkeypatch, capsys):
     assert "TEXT: out" in captured.out
 
 
+def test_autosarindex_cli_wrapper_build_success(monkeypatch, capsys):
+    from autosarindex import cli
+
+    monkeypatch.setattr("autosarindex.cli.AutosarIndex", _FakeIndex)
+    exit_code = cli.main(["build", "AUTOSAR_SWS_COM.pdf", "--output-dir", "out"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "JSON: out" in captured.out
+    assert "TEXT: out" in captured.out
+
+
 def test_cli_include_summaries_requires_model(capsys):
-    from datasheetindex import cli
+    from autosarindex import cli
 
     exit_code = cli.main(["build", "input.pdf", "--include-summaries"])
     captured = capsys.readouterr()
@@ -53,13 +65,13 @@ def test_cli_include_summaries_requires_model(capsys):
 
 
 def test_cli_build_error_returns_nonzero(monkeypatch, capsys):
-    from datasheetindex import cli
+    from autosarindex import cli
 
     class _RaisingIndex(_FakeIndex):
         def build(self, *args, **kwargs):
             raise ValueError("boom")
 
-    monkeypatch.setattr("datasheetindex.cli.DatasheetIndex", _RaisingIndex)
+    monkeypatch.setattr("autosarindex.cli.AutosarIndex", _RaisingIndex)
     exit_code = cli.main(["build", "input.pdf"])
     captured = capsys.readouterr()
 
@@ -69,7 +81,7 @@ def test_cli_build_error_returns_nonzero(monkeypatch, capsys):
 
 def test_cli_default_output_dir_is_output(monkeypatch, capsys):
     """CLI must keep the interactive default of ./output/ -- not the resolver."""
-    from datasheetindex import cli
+    from autosarindex import cli
 
     captured_output_dir: dict[str, str] = {}
 
@@ -79,7 +91,7 @@ def test_cli_default_output_dir_is_output(monkeypatch, capsys):
             output_dir: str = "output",
             include_summaries: bool = False,
             llm_callable=None,
-        ) -> DatasheetArtifacts:
+        ) -> AutosarArtifacts:
             captured_output_dir["value"] = output_dir
             return super().build(
                 output_dir=output_dir,
@@ -87,7 +99,7 @@ def test_cli_default_output_dir_is_output(monkeypatch, capsys):
                 llm_callable=llm_callable,
             )
 
-    monkeypatch.setattr("datasheetindex.cli.DatasheetIndex", _CapturingIndex)
+    monkeypatch.setattr("autosarindex.cli.AutosarIndex", _CapturingIndex)
     exit_code = cli.main(["build", "input.pdf"])
     capsys.readouterr()
 
@@ -96,7 +108,7 @@ def test_cli_default_output_dir_is_output(monkeypatch, capsys):
 
 
 def test_cli_build_with_model_uses_llm_client(monkeypatch):
-    from datasheetindex import cli
+    from autosarindex import cli
 
     calls: list[str] = []
     closed = {"value": False}
@@ -112,8 +124,8 @@ def test_cli_build_with_model_uses_llm_client(monkeypatch):
         calls.append(model)
         return _CloseableLlm()
 
-    monkeypatch.setattr("datasheetindex.cli.DatasheetIndex", _FakeIndex)
-    monkeypatch.setattr("datasheetindex.llm.client.create_llm_client", _fake_client)
+    monkeypatch.setattr("autosarindex.cli.AutosarIndex", _FakeIndex)
+    monkeypatch.setattr("autosarindex.llm.client.create_llm_client", _fake_client)
 
     exit_code = cli.main(["build", "input.pdf", "--model", "gpt-4.1"])
 

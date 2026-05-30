@@ -62,7 +62,7 @@ def test_create_llm_client_raises_without_env(monkeypatch):
     monkeypatch.delenv("LITELLM_MASTER_KEY", raising=False)
     _install_fake_dotenv(monkeypatch)
 
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     with pytest.raises(ValueError, match="LITELLM_BASE_URL"):
         create_llm_client()
@@ -74,7 +74,7 @@ def test_create_llm_client_raises_partial_env(monkeypatch):
     monkeypatch.delenv("LITELLM_MASTER_KEY", raising=False)
     _install_fake_dotenv(monkeypatch)
 
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     with pytest.raises(ValueError, match="LITELLM_BASE_URL"):
         create_llm_client()
@@ -90,7 +90,7 @@ def test_create_llm_client_tls_verify_defaults_false(monkeypatch):
     _seen_openai_kwargs: dict[str, object] = {}
     _patch_fake_clients(monkeypatch, seen_httpx_kwargs, _seen_openai_kwargs)
 
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     llm = create_llm_client()
     assert callable(llm)
@@ -107,7 +107,7 @@ def test_create_llm_client_tls_verify_can_be_enabled(monkeypatch):
     _seen_openai_kwargs: dict[str, object] = {}
     _patch_fake_clients(monkeypatch, seen_httpx_kwargs, _seen_openai_kwargs)
 
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     llm = create_llm_client()
     assert callable(llm)
@@ -125,7 +125,7 @@ def test_create_llm_client_timeout_and_retries_defaults(monkeypatch):
     seen_openai_kwargs: dict[str, object] = {}
     _patch_fake_clients(monkeypatch, seen_httpx_kwargs, seen_openai_kwargs)
 
-    from datasheetindex.llm.client import (
+    from autosarindex.llm.client import (
         DEFAULT_MAX_RETRIES,
         DEFAULT_TIMEOUT_SECONDS,
         create_llm_client,
@@ -149,7 +149,7 @@ def test_create_llm_client_timeout_and_retries_override(monkeypatch):
     seen_openai_kwargs: dict[str, object] = {}
     _patch_fake_clients(monkeypatch, seen_httpx_kwargs, seen_openai_kwargs)
 
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     llm = create_llm_client()
     assert callable(llm)
@@ -164,7 +164,7 @@ def test_create_llm_client_invalid_timeout_raises(monkeypatch):
     monkeypatch.setenv("LITELLM_TIMEOUT_SECONDS", "0")
     _install_fake_dotenv(monkeypatch)
 
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     with pytest.raises(ValueError, match="LITELLM_TIMEOUT_SECONDS"):
         create_llm_client()
@@ -176,7 +176,7 @@ def test_create_llm_client_invalid_retries_raises(monkeypatch):
     monkeypatch.setenv("LITELLM_MAX_RETRIES", "-1")
     _install_fake_dotenv(monkeypatch)
 
-    from datasheetindex.llm.client import create_llm_client
+    from autosarindex.llm.client import create_llm_client
 
     with pytest.raises(ValueError, match="LITELLM_MAX_RETRIES"):
         create_llm_client()
@@ -197,7 +197,7 @@ def test_close_llm_client_closes_httpx_client(monkeypatch):
         httpx_clients=httpx_clients,
     )
 
-    from datasheetindex.llm.client import close_llm_client, create_llm_client
+    from autosarindex.llm.client import close_llm_client, create_llm_client
 
     llm = create_llm_client()
     close_llm_client(llm)
@@ -208,9 +208,9 @@ def test_close_llm_client_closes_httpx_client(monkeypatch):
 
 def test_call_with_retry_retries_on_429(monkeypatch):
     """Should retry on rate limit errors and succeed."""
-    from datasheetindex.llm.client import _call_with_retry
+    from autosarindex.llm.client import _call_with_retry
 
-    monkeypatch.setattr("datasheetindex.llm.client._RETRY_BASE_DELAY", 0.01)
+    monkeypatch.setattr("autosarindex.llm.client._RETRY_BASE_DELAY", 0.01)
 
     call_count = 0
 
@@ -232,9 +232,9 @@ def test_call_with_retry_retries_on_429(monkeypatch):
 
 def test_call_with_retry_raises_on_non_retryable(monkeypatch):
     """Should raise immediately on non-retryable errors."""
-    from datasheetindex.llm.client import _call_with_retry
+    from autosarindex.llm.client import _call_with_retry
 
-    monkeypatch.setattr("datasheetindex.llm.client._RETRY_BASE_DELAY", 0.01)
+    monkeypatch.setattr("autosarindex.llm.client._RETRY_BASE_DELAY", 0.01)
 
     def fake_create(*, model, instructions, input):
         raise ValueError("bad input")
@@ -246,9 +246,9 @@ def test_call_with_retry_raises_on_non_retryable(monkeypatch):
 
 def test_call_with_retry_raises_after_max_attempts(monkeypatch):
     """Should raise after exhausting all retry attempts."""
-    from datasheetindex.llm.client import _call_with_retry
+    from autosarindex.llm.client import _call_with_retry
 
-    monkeypatch.setattr("datasheetindex.llm.client._RETRY_BASE_DELAY", 0.01)
+    monkeypatch.setattr("autosarindex.llm.client._RETRY_BASE_DELAY", 0.01)
 
     class _RateLimitError(Exception):
         status_code = 429
@@ -265,7 +265,7 @@ def test_call_with_retry_raises_after_max_attempts(monkeypatch):
 @pytest.mark.integration
 def test_create_llm_client_integration():
     """Integration: verify a simple LLM call returns non-empty text."""
-    from datasheetindex.llm.client import close_llm_client, create_llm_client
+    from autosarindex.llm.client import close_llm_client, create_llm_client
 
     llm = create_llm_client()
     try:
