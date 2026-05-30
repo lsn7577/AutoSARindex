@@ -1,6 +1,3 @@
-<a href="https://www.infineon.com">
-<img src="./assets/images/Logo.svg" align="right" alt="Infineon logo">
-</a>
 
 # autosarindex
 
@@ -8,7 +5,7 @@ Agent-first indexing for AUTOSAR standard documents.
 
 ## What it does
 
-`autosarindex` is meant to be handed to an external agent in three parts:
+`autosarindex` is developed based on 'datasheetindex', it is meant to be handed to an external agent in three parts:
 
 1. **Enriched ToC JSON** - Hierarchical section tree with page ranges, pre-computed breadcrumbs, boilerplate flags, AUTOSAR requirement IDs, normative keyword hints, referenced AUTOSAR documents, and a preamble (pages 1-2 raw text) for agent orientation
 2. **Page-matched text file** - Full document text with `--- PAGE N ---` markers aligned to the JSON, with column-aware reading order for two-column layouts
